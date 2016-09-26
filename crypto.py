@@ -1,6 +1,10 @@
-import os, random
+#!/usr/bin/env python
 
+import os, random, argparse
 
+# Change to private key location
+pvtkl = '/media/hollis/Hollis/private_keys/private_key.txt'
+pblkl = '/home/hollis/dev/crypto/ElGamal/public_key.txt'
 #############################
 
 def string_to_ascii(message):
@@ -101,6 +105,26 @@ def inverse(num,prime):
 
     return X[len(X)-1]%prime
 
+def mult_mod_p(num1,num2,p):
+    final = 0
+    vals = []
+    curr = num1
+    mult = 1
+    while mult < num2:
+        vals.append([mult,curr])
+        curr = (curr+curr)%p
+        mult = mult + mult
+
+    vals.reverse()
+    countdown = int(num2)
+    pos = 0
+    while countdown != 0:
+        if vals[pos][0] <= countdown:
+            countdown = countdown - vals[pos][0]
+            final = (final + vals[pos][1])%p
+        if vals[pos][0] > countdown:
+            pos += 1
+    return final
 
 def pow_mod_p(num1,power,p):
     '''
@@ -202,24 +226,21 @@ def split_message(asciistr,prime):
             asciistr = asciistr[prime-6:len(asciistr)]
             continue
 
-    messages.append(asciistr)
+        messages.append(long(asciistr))
     return messages
 
 
-def g_encrypt(message,public_key,y):
-    p  = public_key[0]
-    g  = public_key[1]
-    gx = public_key[2]
+def g_encrypt(message,(p,g,gx),y):
     m = message
     gy = pow_mod_p(g,y,p)
     gxy = pow_mod_p(gx,y,p)
-    mgxy = m*gxy
+    mgxy = mult_mod_p(m,gxy,p)
     return (gy,mgxy)
 
 
 def g_decrypt((gy,mgxy),(p,g,gx),x):
     gxyinv = inverse(pow_mod_p(gy,x,p),p)%p
-    message = mgxy*gxyinv%p
+    message = mult_mod_p(mgxy,gxyinv,p)
     return message
 
 
@@ -251,6 +272,7 @@ def encrypt_read(full_path):
     
     for a in range(len(m)):
         for b in range(len(m[a])):
+
             m[a][b] = long(m[a][b])
         m[a] = tuple(m[a])
     return m
@@ -276,13 +298,16 @@ def ElGamal_encrypt(message,public_key='/home/hollis/dev/crypto/ElGamal/Bob/publ
     if type(message) == str:
         message = string_to_ascii(message)
 
+    print 'splitting message start'
     if message >= prime:
-        messages = split_message(messages,public_key[0])
+        messages = split_message(message,public_key[0])
+    print 'splitting message end' 
     if message < prime:
         messages = [message]
     encrypt = []
+    print "begin finding rand int"
     y = random.randint(2,prime-1)
-
+    print "found rand int"
     for a in messages:
         encrypt.append(g_encrypt(a,public_key,y))
 
@@ -313,8 +338,7 @@ def encrypt_file(filepath,public_key):
     fle = open(filepath)
     mssg = fle.read()
     fle.close
-    os.remove(filepath)
-
+    slshpos = 0
     for a in range(len(filepath)):
         if filepath[len(filepath)-1-a] == '/':
             slshpos = len(filepath)-a
@@ -330,19 +354,20 @@ def encrypt_file(filepath,public_key):
     em = em + ElGamal_encrypt(mssg,public_key)
 
     encrypt_write(em,path)
+    os.remove(filepath)
     return
 
 
 def decrypt_file(filepath,publickey_path,privatekey_path):
     em = encrypt_read(filepath)
-    os.remove(filepath)
     message = ElGamal_decrypt(em,publickey_path,privatekey_path)
     name = message[0]
     mssg = ''
 
     for a in range(1,len(message)):
         mssg += message[a]
-
+    
+    pos = 0
     for a in range(len(filepath)):
         if filepath[len(filepath)-1-a] == '/':
             pos = len(filepath)-a
@@ -359,3 +384,22 @@ prme = int(prme,16)
 
 gen = 2
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d","--decrypt",action="store_true",help="Decrypt a file." )
+    parser.add_argument("-e","--encrypt",action="store_true",help="Encrypt a file.")
+    parser.add_argument("-pblk","-pblk",action="store_true",help="Create a public and private key.")
+    parser.add_argument('path',help="Path of target file.")
+    args = parser.parse_args()
+    filepath = args.path
+    print filepath
+    if args.e:
+        print "Encrypting " + filepath
+        print " "
+        print "If using your public key press enter, else enter public key path."
+        fl = raw_input("Public Key Path : ")
+        encrypt_file(filepath,pblkl)
+        print "Finished encrypting"
+    if args.d:
+        decrypt_file(filepath,pblkl,pvtkl)
+        print "Finised decrypting"
