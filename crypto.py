@@ -3,8 +3,8 @@
 import os, random, argparse
 
 # Change to private key location
-pvtkl = '/media/hollis/Hollis/private_keys/private_key.txt'
-pblkl = '/home/hollis/dev/crypto/ElGamal/public_key.txt'
+pvtkl = '/home/hollis/Documents/private_key.txt'
+pblkl = '/home/hollis/dev/crypto/public_key.txt'
 #############################
 
 def string_to_ascii(message):
@@ -13,7 +13,7 @@ def string_to_ascii(message):
         integer.
 
     '''
-    int_mssg = '30'
+    int_mssg = '333'
     for a in message:
         spp = str(ord(a))
         while len(spp) < 3:
@@ -31,14 +31,13 @@ def ascii_to_string(integer):
     txt = ''
     chars = []
     message.replace('L','')
-    message = message[2:len(message)]
-    while len(message)%3 != 0:
-        message = '0' + message
+    message = message[3:len(message)]
+
     for a in range(len(message)/3):
         chars.append(message[3*a:3*a+3])       
 
     for a in chars:
-        if a.isalnum:
+        if a.isalnum and int(a) < 256 :
             txt += chr(int(a))
     return txt
 
@@ -190,45 +189,33 @@ def read_public_key(path):
 
 
 def split_message(asciistr,prime):
-    if type(asciistr) == long:
-        asciistr = str(asciistr)    
+    pdig = len(str(prime))-1
+    print type(asciistr)
+    if type(asciistr) == int or type(asciistr) == long:
+        asciistr = str(asciistr)
+    
+    print type(asciistr)
+    if (pdig-7)%3 == 0:
+        sp = pdig-7
+
+    if (pdig-6)%3 == 0:
+        sp = pdig-6
+
+    if (pdig-5)%3 == 0:
+        sp = pdig-5
 
     messages = []
-    while len(asciistr) > prime:
 
-        if asciistr[prime-1] != '0':
-            messages.append(asciistr[0:prime-1])
-            asciistr = asciistr[prime-1:len(asciistr)]
-            continue
+    while len(asciistr) > sp:
+        messages.append(long('333' + asciistr[0:sp]))
+        asciistr = asciistr[sp:len(asciistr)]
 
-        if asciistr[prime - 2] != '0':
-            messages.append(asciistr[0:prime-2])
-            asciistr = asciistr[prime-2:len(asciistr)]
-            continue
+    if len(asciistr) > 0:
+        messages.append(long('333'+asciistr))
 
-        if asciistr[prime - 3] != '0':
-            messages.append(asciistr[0:prime-3])
-            asciistr = asciistr[prime-3:len(asciistr)]
-            continue
-        
-        if asciistr[prime - 4] != '0':
-            messages.append(asciistr[0:prime-4])
-            asciistr = asciistr[prime-4:len(asciistr)]
-            continue
-
-        if asciistr[prime - 5] != '0':
-            messages.append(asciistr[0:prime-5])
-            asciistr = asciistr[prime-5:len(asciistr)]
-            continue
-
-        if asciistr[prime - 6] != '0':
-            messages.append(asciistr[0:prime-6])
-            asciistr = asciistr[prime-6:len(asciistr)]
-            continue
-
-        messages.append(long(asciistr))
     return messages
-
+    
+        
 
 def g_encrypt(message,(p,g,gx),y):
     m = message
@@ -251,7 +238,7 @@ def encrypt_write(em,path):
 
     for a in range(1,len(stng)-2):
         if stng[a] == ',' and stng[a-1] == ')':
-            stng = stng[0:a]+'/'+stng[a+1:len(stng)-1]       
+            stng = stng[0:a]+'/'+stng[a+1:len(stng)]       
     stng = stng.replace('[','')
     stng = stng.replace(']','')
     stng = stng.replace('(','')
@@ -337,7 +324,7 @@ def ElGamal_decrypt(encrypted,public_key_path='/home/hollis/dev/crypto/ElGamal/B
 def encrypt_file(filepath,public_key):
     fle = open(filepath)
     mssg = fle.read()
-    fle.close
+    fle.close()
     slshpos = 0
     for a in range(len(filepath)):
         if filepath[len(filepath)-1-a] == '/':
@@ -376,6 +363,7 @@ def decrypt_file(filepath,publickey_path,privatekey_path):
     fle = open(filepath[0:pos]+name,'a')
     fle.write(mssg)
     fle.close()
+    os.remove(filepath)
     return
 
 prme = 'FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1      29024E08 8A67CC74 020BBEA6 3B139B22 514A0879 8E3404DD      EF9519B3 CD3A431B 302B0A6D F25F1437 4FE1356D 6D51C245      E485B576 625E7EC6 F44C42E9 A637ED6B 0BFF5CB6 F406B7ED      EE386BFB 5A899FA5 AE9F2411 7C4B1FE6 49286651 ECE45B3D      C2007CB8 A163BF05 98DA4836 1C55D39A 69163FA8 FD24CF5F      83655D23 DCA3AD96 1C62F356 208552BB 9ED52907 7096966D      670C354E 4ABC9804 F1746C08 CA18217C 32905E46 2E36CE3B      E39E772C 180E8603 9B2783A2 EC07A28F B5C55DF0 6F4C52C9      DE2BCBF6 95581718 3995497C EA956AE5 15D22618 98FA0510      15728E5A 8AACAA68 FFFFFFFF FFFFFFFF'
@@ -393,13 +381,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
     filepath = args.path
     print filepath
-    if args.e:
+    if args.encrypt:
         print "Encrypting " + filepath
         print " "
         print "If using your public key press enter, else enter public key path."
         fl = raw_input("Public Key Path : ")
         encrypt_file(filepath,pblkl)
         print "Finished encrypting"
-    if args.d:
+    if args.decrypt:
         decrypt_file(filepath,pblkl,pvtkl)
         print "Finised decrypting"
+
