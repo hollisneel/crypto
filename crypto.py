@@ -3,8 +3,8 @@
 import os, random, argparse
 
 # Change to private key location
-pvtkl = '/home/hollis/Documents/private_key.txt'
-pblkl = '/home/hollis/dev/crypto/public_key.txt'
+pvtkl = '/home/hollis/Documents/private_key.hpvtkey'
+pblkl = '/home/hollis/dev/crypto/public_key.hpubkey'
 #############################
 
 def string_to_ascii(message):
@@ -105,6 +105,12 @@ def inverse(num,prime):
     return X[len(X)-1]%prime
 
 def mult_mod_p(num1,num2,p):
+    '''
+        Similar to the binary power algorithm,
+        but with multiplication. This is much
+        better in handling large numbers.
+    '''
+
     final = 0
     vals = []
     curr = num1
@@ -159,8 +165,14 @@ def pow_mod_p(num1,power,p):
 
 
 def create_public_key(prime,generator,pub_path,sec_path):
-    z = open(pub_path+'public_key.txt','a')
-    z2= open(sec_path+'private_key.txt','a')
+    '''
+        Given a prime, generator, public key
+        path, and private key path. This 
+        generates a public key file and private
+        key file at the specified location.
+    '''
+    z = open(pub_path+'public_key.hpubkey','a')
+    z2= open(sec_path+'private_key.hpvtkey','a')
 
     secret_int = random.randint(2,prime-2)
     # (prime,gen,gen^sec)
@@ -173,6 +185,12 @@ def create_public_key(prime,generator,pub_path,sec_path):
 
 
 def read_public_key(path):
+    '''
+        Reads a .hpubkey file to work with this 
+        script. Only one input, the path of the
+        file.
+    '''
+
     z = open(path)
     raw = z.read()
 
@@ -187,14 +205,28 @@ def read_public_key(path):
     final.append(long(raw[cmmapos:len(raw)]))
     return final
 
+def read_private_key(path):
+    '''
+        Reads a .hpvtkey. Only needs the location
+        of the file.
+    '''
+    z = open(path)
+    sec = long(z.read())
+    z.close()
+    return sec
+
 
 def split_message(asciistr,prime):
+    '''
+        Splits a large message into smaller
+        messages which can be used.
+    '''
+
     pdig = len(str(prime))-1
-    print type(asciistr)
+
     if type(asciistr) == int or type(asciistr) == long:
         asciistr = str(asciistr)
     
-    print type(asciistr)
     if (pdig-7)%3 == 0:
         sp = pdig-7
 
@@ -218,6 +250,18 @@ def split_message(asciistr,prime):
         
 
 def g_encrypt(message,(p,g,gx),y):
+    '''
+        The simplest form of the El Gamal
+        encryption protocal. 
+
+        Takes a message (smaller than p-1), 
+        public key (prime,generator,generator^pvtkey),
+        where pvtkey is the private key of the owner 
+        of the public key.
+
+        y is your own secret integer. If you also have
+        a private key, this can be your y.
+    '''
     m = message
     gy = pow_mod_p(g,y,p)
     gxy = pow_mod_p(gx,y,p)
@@ -226,12 +270,31 @@ def g_encrypt(message,(p,g,gx),y):
 
 
 def g_decrypt((gy,mgxy),(p,g,gx),x):
+    '''
+        The simplest form of the El Gamal
+        decryption protocal.
+
+        Takes an encrypted message with the format,
+        (generator to the senders secret int, message
+        times the generator to both secret ints.)
+
+        The next input is your public key that was used
+        in encrypting the message.
+
+        The last input is your secret int.
+    '''
     gxyinv = inverse(pow_mod_p(gy,x,p),p)%p
     message = mult_mod_p(mgxy,gxyinv,p)
     return message
 
 
 def encrypt_write(em,path):
+    '''
+        Takes an encrypted message and the location
+        where you want to put the file, and creates 
+        a file with the message.
+    '''
+
     fle = open(path+'encrypted'+str(os.times()[4]).replace('.','')+'.hcrypt','a')
     stng = str(em)
     stng = stng.replace(' ','' )
@@ -249,6 +312,11 @@ def encrypt_write(em,path):
 
 
 def encrypt_read(full_path):
+    '''
+        Reads a .hcrypt file. This takes
+        a path and returns the encrypted message(s).
+    '''
+
     fle = open(full_path)
     rawm= fle.read()
     fle.close()
@@ -267,12 +335,14 @@ def encrypt_read(full_path):
 
 #######################################
 
-def ElGamal_encrypt(message,public_key='/home/hollis/dev/crypto/ElGamal/Bob/public_key.txt'):
+def ElGamal_encrypt(message,public_key=pblkl,secret_int = -1):
 
     '''
 
-        Takes a message and a public key(or public_key_path) 
-        of format p,g,gx and encrypts the message.
+        Takes a message(string or int), a public key
+        (or public_key_path) of format p,g,gx, and 
+        (optional: if you have a secret int) and 
+        encrypts the message.
 
     '''
 
@@ -285,23 +355,26 @@ def ElGamal_encrypt(message,public_key='/home/hollis/dev/crypto/ElGamal/Bob/publ
     if type(message) == str:
         message = string_to_ascii(message)
 
-    print 'splitting message start'
+
     if message >= prime:
         messages = split_message(message,public_key[0])
-    print 'splitting message end' 
+
     if message < prime:
         messages = [message]
     encrypt = []
-    print "begin finding rand int"
-    y = random.randint(2,prime-1)
-    print "found rand int"
+    
+    if secret_int == -1:
+        y = random.randint(2,prime-1)
+    if secret_int != -1:
+        y = secret_int
+
     for a in messages:
         encrypt.append(g_encrypt(a,public_key,y))
 
     return encrypt
 
 
-def ElGamal_decrypt(encrypted,public_key_path='/home/hollis/dev/crypto/ElGamal/Bob/public_key.txt',private_key_path='/home/hollis/dev/crypto/ElGamal/Bob/private_key.txt'):
+def ElGamal_decrypt(encrypted,public_key_path=pblkl,private_key_path=pvtkl):
     '''
         Takes an encrypted message list (from ElGamal_encrypt)
         Decrypts and returns the original message.
@@ -321,7 +394,17 @@ def ElGamal_decrypt(encrypted,public_key_path='/home/hollis/dev/crypto/ElGamal/B
     return final
 
 
-def encrypt_file(filepath,public_key):
+def encrypt_file(filepath,public_key,sec_int=-1):
+
+    '''
+        Takes a file location and public key and encrypts
+        the file.
+    '''
+
+    if type(sec_int) == str:
+        sec_int = read_private_key(sec_int)
+
+
     fle = open(filepath)
     mssg = fle.read()
     fle.close()
@@ -337,8 +420,8 @@ def encrypt_file(filepath,public_key):
     if type(public_key) == str:
         public_key = read_public_key(public_key)
 
-    em = ElGamal_encrypt(name,public_key)
-    em = em + ElGamal_encrypt(mssg,public_key)
+    em = ElGamal_encrypt(name,public_key,sec_int)
+    em = em + ElGamal_encrypt(mssg,public_key,sec_int)
 
     encrypt_write(em,path)
     os.remove(filepath)
@@ -380,15 +463,20 @@ if __name__ == "__main__":
     parser.add_argument('path',help="Path of target file.")
     args = parser.parse_args()
     filepath = args.path
-    print filepath
     if args.encrypt:
-        print "Encrypting " + filepath
+        print ''
+        print "Encrypting: " + filepath
         print " "
         print "If using your public key press enter, else enter public key path."
         fl = raw_input("Public Key Path : ")
+        print ' '
+        print 'encrypting ...'
         encrypt_file(filepath,pblkl)
+        print ' '
         print "Finished encrypting"
     if args.decrypt:
+        print " "
+        print "decrypting: ", filepath 
         decrypt_file(filepath,pblkl,pvtkl)
         print "Finised decrypting"
 
