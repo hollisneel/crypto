@@ -13,9 +13,11 @@ import os, random, argparse
 #################################################
 #    Change to private/public key locations     #
 #################################################
-eg_pvtkl = '/home/hollis/Documents/private_key.hpvtkey'
-eg_pblkl = '/home/hollis/dev/crypto/public_key.hpubkey'
+eg_pvtkl  = '/home/hollis/Documents/Private_Keys/private_key.hpvtkey'
+eg_pblkl  = '/home/hollis/dev/crypto/public_key.hpubkey'
 
+rsa_pvtkl = '/home/hollis/Documents/Private_Keys/private_key.rsahpvtkey' 
+rsa_pblkl = '/home/hollis/dev/crypto/public_key.rsahpubkey'
 
 #################################################
 #
@@ -56,6 +58,44 @@ def ascii_to_string(integer):
         if a.isalnum and int(a) < 256 :
             txt += chr(int(a))
     return txt
+
+def gcd(a,b):
+    n = euclid_alg(a,b)
+    if type(n) == int:
+        return n
+    return 1
+
+def solve_mod(a,b,n):
+    # Solves of the form ax = b mod n
+    
+    d = gcd(a,n)
+    if d != 1:
+        if b%d != 0:
+            raise NameError('gcd(a,n) does not divide b.')
+
+    a = a/d
+    b = b/d
+    n = n/d
+    sol = (inverse(a,n)*b)%n
+    all_soln = []
+    for a in range(d):
+        all_soln.append((sol + (a+1)*n)%(n*d))
+    all_soln.sort()
+    return all_soln
+
+def prime_sieve(num_below):
+    pot = range(num_below+1)
+
+    for a in range(len(pot)):
+        num = pot[a]
+        if num != 0 and num != 0 and num != 1:
+            mult = 2
+            while num*mult < len(pot):
+                pot[num*mult] = 0
+                mult += 1
+    return list(set(pot))[2:len(pot)]
+
+
 
 
 def euclid_alg(num1,num2):
@@ -103,7 +143,9 @@ def inverse(num,prime):
         inverse mod p.
 
     '''
-
+    
+    if num == 1:
+        return num
     info = euclid_alg(num,prime)
     X = [-info['q'][0]]
     Y = [1]
@@ -347,7 +389,7 @@ def eg_encrypt_write(em,path):
         a file with the message.
     '''
 
-    fle = open(path+'encrypted'+str(os.times()[4]).replace('.','')+'.hcrypt','a')
+    fle = open(path+'encrypted'+str(os.times()[4]).replace('.','')+'.eghcrypt','a')
     stng = str(em)
     stng = stng.replace(' ','' )
 
@@ -496,7 +538,7 @@ def ElGamal_decrypt(encrypted,public_key_path=eg_pblkl,private_key_path=eg_pvtkl
     fil = open(private_key_path)
     x = int(fil.read())
     fil.close
-    public_key = eg_read_public_key(public_key_path)
+    public_key = read_public_key(public_key_path)
     prime = public_key[0]
 
     for a in encrypted:    
