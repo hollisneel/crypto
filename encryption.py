@@ -51,10 +51,6 @@ if __name__ == "__main__":
             crypto.eg_encrypt_file(args.path,pub_keyl,s)
             print "Finished Encrypting Using El Gamal"
             print ""
-            
-
-
-
     if args.decrypt:
         print ""
         print "Decrypting : ", args.path

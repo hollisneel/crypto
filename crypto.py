@@ -686,11 +686,13 @@ def rsa_decrypt_file(file_path,pub_path,pvt_path):
             cmma_end = a
             messages.append(long(m[cmma_strt+1:cmma_end]))
             cmma_strt =cmma_end
+    messages.append(long(m[cmma_strt+1:len(m)]))
 
     for a in range(len(messages)):
         messages[a] = ascii_to_string(pow_mod_p(messages[a],d,n))
     name = messages[0]
-    messages = messages[1:len(messages)]
+    print messages
+    messages = messages[1:len(messages)+1]
     final = ''
     for m in messages:
         final += m
